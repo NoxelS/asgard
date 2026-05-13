@@ -1,0 +1,39 @@
+services:
+  llama:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --model
+      - /models/${MODEL_FILE}
+      - --ctx-size
+      - ${CONTEXT_SIZE}
+      - --parallel
+      - ${PARALLEL_REQUESTS}
+      - --threads
+      - ${THREADS}
+      - --n-predict
+      - ${N_PREDICT}
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    expose:
+      - "8080"
+    labels:
+      - diun.enable=true
+    restart: unless-stopped
+    volumes:
+      - ${MODEL_DIR}:/models:ro
+    networks:
+      - apps
+
+networks:
+  apps:
+    external: true

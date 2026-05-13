@@ -9,5 +9,6 @@ docker_host_apt_packages:
 docker_host_admin_users: []
 docker_host_networks:
   - edge
+  - apps
 
 docker_host_daemon_config: {}

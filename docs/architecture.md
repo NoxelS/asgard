@@ -26,6 +26,14 @@ Docker Edge Network (internal service mesh)
 Individual services (no direct public binding)
 ```
 
+**The internal application network model**:
+
+```
+Docker Apps Network (shared backend network)
+  ↓
+Internal services and service-to-service APIs
+```
+
 **The monitoring and updates model**:
 
 ```
@@ -225,7 +233,8 @@ myapp.example.com → Caddy → 10.0.9.3:8080 (app container)
 **Network**:
 - UFW firewall: only ports 22 (SSH), 80 (HTTP), 443 (HTTPS)
 - Internal Docker network (`edge`) for service communication
-- Services cannot reach each other without Caddy routing
+- Shared `apps` network for internal service-to-service communication
+- Public services can join both `edge` and `apps`
 
 **Configuration**:
 - Git audit trail for all infrastructure changes

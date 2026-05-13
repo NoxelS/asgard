@@ -20,4 +20,5 @@ firewall_allowed_tcp_ports:
 docker_host_admin_users: "{{ admin_users }}"
 docker_host_networks:
   - edge
+  - apps
 docker_service_root: /opt/services

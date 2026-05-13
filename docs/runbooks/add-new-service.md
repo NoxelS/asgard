@@ -32,8 +32,8 @@ Ask yourself:
    - This will be unpublished (Caddy routes to it)
 
 4. **Networking** (public or internal?)
-   - Public: Routed through Caddy reverse proxy
-   - Internal: Only accessible within Docker network
+   - Public: Routed through Caddy reverse proxy on `edge`
+   - Internal: Use the shared `apps` network only
 
 5. **Configuration** (environment variables)
    - Example: `DOMAIN`, `LOG_LEVEL`, `API_KEY`
@@ -115,7 +115,8 @@ volumes:
 ```
 
 **Key points**:
-- Always use `networks: - edge` (shared ingress network)
+- Public services should use `networks: - edge` and `networks: - apps`
+- Internal services should use `networks: - apps`
 - Pin image versions (no `latest`)
 - Use unpublished ports (not `80:80`)
 - Include health checks if possible
@@ -431,7 +432,7 @@ After deployment:
 - [ ] No startup errors: `ssh yggdrasil docker logs <name> | grep -i error`
 - [ ] Accessible: `curl https://<domain>/` (if public)
 - [ ] Health check passing: `ssh yggdrasil docker inspect <name>`
-- [ ] On edge network: `ssh yggdrasil docker network inspect edge | grep <name>`
+- [ ] On the expected network: `ssh yggdrasil docker network inspect apps | grep <name>`
 - [ ] Monitoring enabled: `ssh yggdrasil docker inspect <name> | grep diun.enable`
 
 ## Common Issues

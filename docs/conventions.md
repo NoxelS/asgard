@@ -28,9 +28,11 @@ This document outlines the naming, structure, and operational conventions used t
   - ✓ `ntfy-data`, `my-service-data`
   - ✗ `data`, `ntfy_data`, `NTFY-DATA`
 
-- **Docker networks**: `edge` (the shared ingress network)
-  - Internal services communicate via this network
-  - All services must connect to `edge` for Caddy routing
+- **Docker networks**:
+  - `edge` (the shared ingress network)
+  - `apps` (shared internal application network)
+  - Public services connect to both `edge` and `apps` when they need Caddy routing and backend reachability
+  - Internal services connect to `apps` only
 
 ### Environment Variables
 
@@ -446,7 +448,7 @@ When adding a new service, ensure:
 - [ ] `compose.yaml` exists and is valid
 - [ ] `.env.example` exists and documents all variables
 - [ ] `.env` is created from `.env.example`
-- [ ] Services use `edge` network
+- [ ] Services use the appropriate shared network (`edge` for public ingress, `apps` for internal service traffic)
 - [ ] No services bind to 80/443 (except reverse-proxy)
 - [ ] Image tag is pinned (not `latest`)
 - [ ] `diun.enable=true` label present (if updates should be monitored)
