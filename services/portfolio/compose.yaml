@@ -1,0 +1,22 @@
+services:
+  portfolio:
+    image: ghcr.io/noxels/portfolio:latest
+    env_file:
+      - ./.env
+    expose:
+      - "4321"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://0.0.0.0:4321/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - diun.enable=true
+      - diun.image=ghcr.io/noxels/portfolio:latest
+    restart: unless-stopped
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true

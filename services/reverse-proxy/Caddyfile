@@ -16,6 +16,12 @@ http:// {
 	}
 }
 
+noel.fyi {
+	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+	import security_headers
+	reverse_proxy portfolio:4321
+}
+
 ntfy.noel.fyi {
 	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
 	import security_headers
@@ -32,6 +38,17 @@ uptime.noel.fyi {
 	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
 	import security_headers
 	reverse_proxy uptime-kuma:3001
+}
+
+analytics.noel.fyi {
+	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+	import security_headers
+
+	handle_path /api* {
+		reverse_proxy openpanel-api:3000
+	}
+
+	reverse_proxy openpanel-dashboard:3000
 }
 
 {$CADDY_SITE_ADDRESSES} {
