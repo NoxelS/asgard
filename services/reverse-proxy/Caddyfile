@@ -22,6 +22,12 @@ ntfy.noel.fyi {
 	reverse_proxy ntfy:80
 }
 
+hooks.noel.fyi {
+	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+	import security_headers
+	reverse_proxy webhooks:9000
+}
+
 uptime.noel.fyi {
 	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
 	import security_headers
