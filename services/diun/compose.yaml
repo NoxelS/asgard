@@ -1,0 +1,15 @@
+services:
+  diun:
+    image: crazymax/diun:4.31.0
+    command: serve
+    env_file:
+      - ./.env
+    labels:
+      - diun.enable=true
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - diun-data:/data
+
+volumes:
+  diun-data:

@@ -1,0 +1,6 @@
+services:
+  app:
+    image: ghcr.io/example/example-service:1.0.0
+    labels:
+      - diun.enable=true
+    restart: unless-stopped

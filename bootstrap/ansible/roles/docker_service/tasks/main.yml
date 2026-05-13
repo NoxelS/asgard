@@ -1,0 +1,125 @@
+---
+# These local checks validate the repo copy of a service before anything is
+# copied to the host.
+- name: Validate service compose file exists locally
+  ansible.builtin.stat:
+    path: "{{ docker_service_local_path }}/compose.yaml"
+  delegate_to: localhost
+  become: false
+  register: docker_service_compose_file
+
+- name: Check whether the service declares an environment template
+  ansible.builtin.stat:
+    path: "{{ docker_service_local_path }}/.env.example"
+  delegate_to: localhost
+  become: false
+  register: docker_service_env_example_file
+
+- name: Check whether the service has a real environment file
+  ansible.builtin.stat:
+    path: "{{ docker_service_local_path }}/.env"
+  delegate_to: localhost
+  become: false
+  register: docker_service_env_file
+
+- name: Read the service compose file
+  ansible.builtin.slurp:
+    src: "{{ docker_service_local_path }}/compose.yaml"
+  delegate_to: localhost
+  become: false
+  register: docker_service_compose_content
+
+# Fail fast on missing files or unsupported public exposure so we do not leave
+# the host half-updated with a broken service definition.
+- name: Fail when the service directory is incomplete
+  ansible.builtin.assert:
+    that:
+      - docker_service_compose_file.stat.exists
+    fail_msg: "Service {{ docker_service_name }} is missing compose.yaml."
+
+- name: Fail when .env.example exists without .env
+  ansible.builtin.assert:
+    that:
+      - not docker_service_env_example_file.stat.exists or docker_service_env_file.stat.exists
+    fail_msg: >-
+      Service {{ docker_service_name }} defines .env.example but is missing .env.
+      Create services/{{ docker_service_name }}/.env before deployment.
+
+- name: Enforce reverse-proxy-only public ingress
+  ansible.builtin.assert:
+    that:
+      - docker_service_name == "reverse-proxy" or "ports:" not in (docker_service_compose_content.content | b64decode)
+    fail_msg: >-
+      Service {{ docker_service_name }} exposes host ports directly.
+      Keep the service internal and route it through the shared Caddy reverse proxy instead of ports:.
+
+# Stage the tracked service files on the host, then materialize decrypted secret
+# files only on the remote machine right before the compose run.
+- name: Set service paths
+  ansible.builtin.set_fact:
+    docker_service_remote_path: "{{ docker_service_root }}/{{ docker_service_name }}"
+    docker_service_secret_files: >-
+      {{ lookup("ansible.builtin.fileglob", docker_service_local_path ~ "/secrets/*", wantlist=True) }}
+
+- name: Ensure the service root exists on the host
+  ansible.builtin.file:
+    path: "{{ docker_service_remote_path }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Sync service files to the host
+  ansible.posix.synchronize:
+    src: "{{ docker_service_local_path }}/"
+    dest: "{{ docker_service_remote_path }}/"
+    recursive: true
+    set_remote_user: true
+    private_key: "{{ ansible_ssh_private_key_file }}"
+    rsync_opts: "{{ docker_service_sync_excludes }}"
+    use_ssh_args: true
+  delegate_to: localhost
+  become: false
+  register: docker_service_sync_result
+
+- name: Ensure the service secrets directory exists
+  ansible.builtin.file:
+    path: "{{ docker_service_remote_path }}/secrets"
+    state: directory
+    mode: "0700"
+  when: docker_service_secret_files | length > 0
+
+- name: Deploy decrypted service secrets
+  ansible.builtin.copy:
+    dest: "{{ docker_service_remote_path }}/secrets/{{ item | basename }}"
+    mode: "0600"
+    content: "{{ lookup('ansible.builtin.pipe', 'sops --decrypt ' ~ (item | quote)) }}"
+  loop: "{{ docker_service_secret_files }}"
+  when: docker_service_secret_files | length > 0
+  no_log: true
+  register: docker_service_secret_copy_result
+
+- name: Track whether service files changed on the host
+  ansible.builtin.set_fact:
+    docker_service_files_changed: >-
+      {{
+        docker_service_sync_result is changed
+        or (docker_service_secret_copy_result is defined and docker_service_secret_copy_result is changed)
+      }}
+
+# The final converge step makes Docker start or update the compose project to
+# match the files now present under /opt/services/<name>.
+- name: Start the service stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ docker_service_remote_path }}"
+    remove_orphans: true
+    state: present
+  register: docker_service_compose_result
+
+- name: Restart the service stack when bind-mounted files changed
+  community.docker.docker_compose_v2:
+    project_src: "{{ docker_service_remote_path }}"
+    state: restarted
+  when:
+    - docker_service_name == "reverse-proxy" or docker_service_files_changed
+    - docker_service_name == "reverse-proxy" or not docker_service_compose_result.changed

@@ -1,0 +1,19 @@
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:2.3.2
+    env_file:
+      - ./.env
+    labels:
+      - diun.enable=true
+    restart: unless-stopped
+    volumes:
+      - uptime-kuma-data:/app/data
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+
+volumes:
+  uptime-kuma-data:

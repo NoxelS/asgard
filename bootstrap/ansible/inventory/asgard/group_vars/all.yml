@@ -1,0 +1,23 @@
+---
+# Unix users that should exist on the host and be treated as operators.
+admin_users:
+  - noel
+
+# SSH access policy for the public host.
+ssh_hardening_admin_groups:
+  - sudo
+
+ssh_hardening_disable_password_authentication: true
+ssh_hardening_permit_root_login: "no"
+
+# Only these host ports are meant to be reachable from the outside.
+firewall_allowed_tcp_ports:
+  - 22
+  - 80
+  - 443
+
+# Docker host defaults shared by every service deployment.
+docker_host_admin_users: "{{ admin_users }}"
+docker_host_networks:
+  - edge
+docker_service_root: /opt/services

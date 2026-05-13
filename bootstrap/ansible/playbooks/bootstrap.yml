@@ -1,0 +1,11 @@
+---
+# This is the base host bootstrap: packages first, then SSH/UFW hardening,
+# then Docker installation and shared runtime prerequisites.
+- name: Bootstrap Docker hosts
+  hosts: docker_hosts
+  become: true
+  roles:
+    - common
+    - ssh_hardening
+    - firewall
+    - docker_host

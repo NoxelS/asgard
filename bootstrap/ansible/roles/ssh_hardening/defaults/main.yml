@@ -1,0 +1,6 @@
+---
+ssh_hardening_port: 22
+ssh_hardening_disable_password_authentication: true
+ssh_hardening_permit_root_login: "no"
+ssh_hardening_admin_groups:
+  - sudo

@@ -1,0 +1,7 @@
+---
+docker_service_root: /opt/services
+# Git metadata is noise on the host, and secrets are handled separately so they
+# only exist decrypted at deploy time.
+docker_service_sync_excludes:
+  - --exclude=.git/
+  - --exclude=secrets/

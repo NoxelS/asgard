@@ -1,0 +1,31 @@
+---
+# Enforce the baseline sshd policy and validate the config before Ansible writes
+# it back to disk so a bad change does not lock us out.
+- name: Harden sshd settings
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^{{ item.key }}\\s+"
+    line: "{{ item.key }} {{ item.value }}"
+    state: present
+    validate: "/usr/sbin/sshd -t -f %s"
+  loop:
+    - { key: "Port", value: "{{ ssh_hardening_port }}" }
+    - { key: "PermitRootLogin", value: "{{ ssh_hardening_permit_root_login }}" }
+    - { key: "PasswordAuthentication", value: "{{ 'no' if ssh_hardening_disable_password_authentication else 'yes' }}" }
+    - { key: "KbdInteractiveAuthentication", value: "no" }
+    - { key: "ChallengeResponseAuthentication", value: "no" }
+    - { key: "X11Forwarding", value: "no" }
+    - { key: "PermitEmptyPasswords", value: "no" }
+    - { key: "UsePAM", value: "yes" }
+  notify: Restart ssh
+
+# After protocol/auth settings are locked down, limit SSH access to the admin
+# groups that should be allowed to log in at all.
+- name: Restrict SSH to admin groups
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^AllowGroups\\s+"
+    line: "AllowGroups {{ ssh_hardening_admin_groups | join(' ') }}"
+    state: present
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: Restart ssh

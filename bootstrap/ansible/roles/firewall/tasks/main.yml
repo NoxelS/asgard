@@ -1,0 +1,31 @@
+---
+# UFW is applied in a simple order: set the default stance, open the ports we
+# intentionally publish, allow basic diagnostics, then enable the firewall.
+- name: Set ufw defaults
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: deny }
+    - { direction: outgoing, policy: allow }
+
+- name: Allow public TCP services
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: "{{ item }}"
+  loop: "{{ firewall_allowed_tcp_ports }}"
+
+- name: Allow IPv4 ping in ufw before.rules
+  ansible.builtin.blockinfile:
+    path: /etc/ufw/before.rules
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - allow IPv4 ping"
+    insertbefore: "^COMMIT$"
+    block: |
+      # Allow ping without opening additional TCP or UDP services.
+      -A ufw-before-input -p icmp --icmp-type echo-request -j ACCEPT
+  notify: Reload ufw
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled

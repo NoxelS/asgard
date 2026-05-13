@@ -1,0 +1,12 @@
+[project]
+name = "asgard-ansible"
+version = "0.1.0"
+description = "Local Ansible toolchain for the asgard Docker host"
+requires-python = ">=3.11"
+dependencies = [
+  "ansible>=11.0.0,<12.0.0",
+  "ansible-lint>=25.0.0,<26.0.0",
+]
+
+[tool.uv]
+package = false

@@ -1,0 +1,13 @@
+---
+docker_host_apt_packages:
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-ce
+  - docker-ce-cli
+  - docker-compose-plugin
+
+docker_host_admin_users: []
+docker_host_networks:
+  - edge
+
+docker_host_daemon_config: {}

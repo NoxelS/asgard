@@ -1,0 +1,11 @@
+---
+# Kept alongside bootstrap.yml as the conventional "full site" entrypoint.
+# The execution order matches the base host bootstrap sequence.
+- name: Bootstrap Docker hosts
+  hosts: docker_hosts
+  become: true
+  roles:
+    - common
+    - ssh_hardening
+    - firewall
+    - docker_host

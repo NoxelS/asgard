@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: services/.*/secrets/.*
+    age: age10yk8266lc2dage4hezncp36ux8l9untu2yp8rl0nf5gqyqreqevqqj8pvl
