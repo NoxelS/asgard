@@ -46,7 +46,37 @@ llm.noel.fyi {
 
 	@authorized header Authorization "Bearer {$LLM_BEARER_TOKEN}"
 	handle @authorized {
-		reverse_proxy llama:8080
+		reverse_proxy llama-llm:8080
+	}
+
+	handle {
+		header WWW-Authenticate "Bearer"
+		respond "Unauthorized" 401
+	}
+}
+
+embeddings.noel.fyi {
+	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+	import security_headers
+
+	@authorized header Authorization "Bearer {$LLM_BEARER_TOKEN}"
+	handle @authorized {
+		reverse_proxy llama-embeddings:8080
+	}
+
+	handle {
+		header WWW-Authenticate "Bearer"
+		respond "Unauthorized" 401
+	}
+}
+
+reranking.noel.fyi {
+	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+	import security_headers
+
+	@authorized header Authorization "Bearer {$LLM_BEARER_TOKEN}"
+	handle @authorized {
+		reverse_proxy llama-reranking:8080
 	}
 
 	handle {

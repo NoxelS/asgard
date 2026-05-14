@@ -8,9 +8,9 @@ This service serves local GGUF models over HTTP for host tools and other Docker 
 
 ## Access
 
-- Docker network: `http://llama:8080`
-- Public route: `https://llm.noel.fyi` through Caddy bearer-token auth
-- Model list: `GET /v1/models`
+- Docker network: `http://llama-llm:8080` (chat), `http://llama-embeddings:8080` (embeddings), `http://llama-reranking:8080` (reranking)
+- Public routes: `https://llm.noel.fyi` (chat), `https://embeddings.noel.fyi` (embeddings), `https://reranking.noel.fyi` (reranking) through Caddy bearer-token auth
+- Model list: `GET /v1/models` on any endpoint
 
 ## Configuration
 
