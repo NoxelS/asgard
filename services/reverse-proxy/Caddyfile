@@ -40,6 +40,21 @@ uptime.noel.fyi {
 	reverse_proxy uptime-kuma:3001
 }
 
+llm.noel.fyi {
+	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+	import security_headers
+
+	@authorized header Authorization "Bearer {$LLM_BEARER_TOKEN}"
+	handle @authorized {
+		reverse_proxy llama:8080
+	}
+
+	handle {
+		header WWW-Authenticate "Bearer"
+		respond "Unauthorized" 401
+	}
+}
+
 analytics.noel.fyi {
 	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
 	import security_headers

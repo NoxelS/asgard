@@ -5,7 +5,7 @@ services:
       - sh
       - -ceu
       - |
-        apk add --no-cache curl webhook
+        apk add --no-cache curl git webhook
         secret="$$(cat /run/secrets/webhook_secret)"
         sed "s|__WEBHOOK_SECRET__|$${secret}|g" /config/hooks.yaml.tpl > /tmp/hooks.yaml
         exec webhook -hooks /tmp/hooks.yaml -http-methods POST -port 9000 -verbose
@@ -24,6 +24,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /opt/services:/opt/services
+      - /opt/remote-services:/opt/remote-services
+      - /opt/remote-repos:/opt/remote-repos
       - ./hooks.yaml.tpl:/config/hooks.yaml.tpl:ro
       - ./service-map.tsv:/config/service-map.tsv:ro
       - ./update-service.sh:/config/update-service.sh:ro

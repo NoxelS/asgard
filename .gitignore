@@ -149,6 +149,7 @@ activemq-data/
 
 # Environments
 .env
+!remote-services/**/.env
 .envrc
 .venv
 env/

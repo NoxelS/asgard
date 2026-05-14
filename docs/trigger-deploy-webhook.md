@@ -1,12 +1,13 @@
 # Trigger Yggdrasil Deploy Webhook
 
-Use this guide from another repository when a successful main-branch build should tell Yggdrasil to pull and recreate that project's Docker Compose service.
+Use this guide from another repository when a successful main-branch build should tell Yggdrasil to pull and recreate that project's Docker Compose service. Deployments can target services defined in this repo or remote services checked out from allowlisted repositories.
 
 ## Required Setup
 
 1. Add the repository to `services/webhooks/service-map.tsv` in this infrastructure repo.
-2. Deploy the `webhooks` service after changing the allowlist.
-3. Store the webhook HMAC secret in the source repository's GitHub Actions secrets.
+2. For remote services, add `remote-services/<name>/repo.yaml` and secrets/env to this repo.
+3. Deploy the `webhooks` service after changing the allowlist.
+4. Store the webhook HMAC secret in the source repository's GitHub Actions secrets.
 
 Use this GitHub secret name in side-project repositories:
 
@@ -95,9 +96,10 @@ When adding this to a side-project repository:
 
 1. Confirm the Docker image is pushed before the webhook step runs.
 2. Set `REPOSITORY` to the allowlisted key in `services/webhooks/service-map.tsv`.
-3. Set `IMAGE` and `TAG` to the image that was just pushed.
-4. Use `secrets.YGGDRASIL_WEBHOOK_SECRET` for signing.
-5. Never include the secret in workflow logs.
+3. For remote services, ensure `remote-services/<name>/repo.yaml` points at `github.com/NoxelS/<repo>`.
+4. Set `IMAGE` and `TAG` to the image that was just pushed.
+5. Use `secrets.YGGDRASIL_WEBHOOK_SECRET` for signing.
+6. Never include the secret in workflow logs.
 
 ## Expected Result
 

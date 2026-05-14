@@ -147,15 +147,15 @@ myapp.example.com → Caddy → 10.0.9.3:8080 (app container)
 
 **Components**:
 - Prebuilt Docker images (external sources)
-- Docker Compose definitions (this repo)
+- Docker Compose definitions (this repo or remote repos)
 - Environment configuration (`.env` files)
 - Persistent volumes (app-managed)
 
-**Configuration**: `services/*` (excluding infrastructure services)
+**Configuration**: `services/*` plus `remote-services/*` for repo-managed stacks
 
 **Deployment**: `make ansible-deploy-service SERVICE=<name>` or `make ansible-deploy-services`
 
-**Service discovery**: Automatic from `services/*/compose.yaml`
+**Service discovery**: Automatic from `services/*/compose.yaml` and `remote-services/*/repo.yaml`
 
 **Update workflow**: Diun → Ntfy → Manual decision → Image tag change → Redeploy
 

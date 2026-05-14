@@ -10,6 +10,6 @@ Setup requirements:
 2. Create `services/reverse-proxy/secrets/origin.crt` and `services/reverse-proxy/secrets/origin.key` with the Cloudflare Origin CA certificate and private key.
 3. Encrypt both files with SOPS before committing them.
 
-This stack now routes `ntfy.noel.fyi` to the self-hosted `ntfy` service.
+This stack routes public hostnames to internal Docker services. `llm.noel.fyi` is protected with a bearer token loaded from `services/reverse-proxy/secrets/llm_bearer_token.txt` and proxies authorized requests to `llama:8080` on the `apps` network.
 
 Any additional public service should stay off host ports, join the shared `edge` network, and get an explicit route in `services/reverse-proxy/Caddyfile`.

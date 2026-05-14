@@ -23,6 +23,7 @@ Single-host operations repo for `yggdrasil` and the Docker services it runs.
 - `docs/`: architecture, onboarding, runbooks
 - `bootstrap/ansible/`: host bootstrap and service deployment
 - `services/`: side projects, Compose files, and service-local secrets
+- `remote-services/`: repo-managed stacks with env/secrets stored here
 
 ## Status
 

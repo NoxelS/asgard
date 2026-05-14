@@ -13,7 +13,10 @@ make ansible-inventory
 # Deploy a service
 make ansible-deploy-service SERVICE=<name>
 
-# Deploy all services
+# Deploy a remote service
+make ansible-deploy-services remote_service_selector=<name>
+
+# Deploy all services (local + remote)
 make ansible-deploy-services
 
 # Validate Ansible before deployment
@@ -395,6 +398,12 @@ cat services/<name>/.env
 # Verify secrets are encrypted
 file services/<name>/secrets/*
 
+# Remote services: inspect repo mapping
+cat remote-services/<name>/repo.yaml
+
+# Remote services: check environment variables
+cat remote-services/<name>/.env
+
 # Check DNS resolution
 ssh yggdrasil nslookup <registry-domain>
 ```
@@ -498,7 +507,8 @@ ssh yggdrasil docker logs <name>
 - **Runbooks**: `docs/runbooks/` for step-by-step procedures
 - **Skills**: Use `add-service`, `deploy-service`, `bootstrap-host`, `manage-secrets`
 - **Infrastructure**: `bootstrap/ansible/` for Ansible configuration
-- **Services**: `services/` for service configurations
+- **Services**: `services/` for local service configurations
+- **Remote Services**: `remote-services/` for external repo stacks and secrets
 
 ---
 

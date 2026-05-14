@@ -79,10 +79,22 @@ Use the `add-service` skill or follow this manual process:
    ```
 
 6. **Create README.md**:
-   - Describe what the service does
-   - Link to upstream documentation
-   - List any special operational requirements
-   - Explain how to access the service (URL, credentials)
+    - Describe what the service does
+    - Link to upstream documentation
+    - List any special operational requirements
+    - Explain how to access the service (URL, credentials)
+
+### Remote Services
+
+Remote services are deployed from external repositories and live under `remote-services/<name>/`:
+
+```
+remote-services/<name>/
+├── repo.yaml
+├── .env.example
+├── .env
+└── secrets/
+```
 
 ### Example: Adding `ntfy`
 

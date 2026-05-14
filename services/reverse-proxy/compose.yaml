@@ -1,6 +1,13 @@
 services:
   caddy:
     image: caddy:2.10
+    entrypoint:
+      - /bin/sh
+      - -ceu
+    command:
+      - |
+        export LLM_BEARER_TOKEN="$$(cat /etc/caddy/secrets/llm_bearer_token.txt)"
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     env_file:
       - ./.env
     labels:
@@ -13,13 +20,17 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./secrets/origin.crt:/etc/caddy/certs/origin.crt:ro
       - ./secrets/origin.key:/etc/caddy/certs/origin.key:ro
+      - ./secrets/llm_bearer_token.txt:/etc/caddy/secrets/llm_bearer_token.txt:ro
       - caddy-data:/data
       - caddy-config:/config
     networks:
       - edge
+      - apps
 
 networks:
   edge:
+    external: true
+  apps:
     external: true
 
 volumes:

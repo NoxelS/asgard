@@ -1,0 +1,3 @@
+---
+remote_service_root: /opt/remote-services
+remote_repo_root: /opt/remote-repos

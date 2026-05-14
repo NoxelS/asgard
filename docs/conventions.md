@@ -84,6 +84,19 @@ asgard-agents/
 Every service under `services/<name>/` must have:
 
 ```
+
+Remote services live under `remote-services/<name>/` and must have:
+
+```
+remote-services/<name>/
+├── repo.yaml              # Repository reference (REQUIRED)
+├── .env.example           # Environment template (RECOMMENDED)
+├── .env                   # Actual config (REQUIRED when .env.example exists)
+└── secrets/               # Encrypted SOPS files (optional)
+    ├── README.md
+    ├── credentials.yaml   # Encrypted with SOPS
+    └── api-keys.yaml      # Encrypted with SOPS
+```
 services/<name>/
 ├── compose.yaml          # Docker Compose definition (REQUIRED)
 ├── .env.example          # Environment template (REQUIRED)
