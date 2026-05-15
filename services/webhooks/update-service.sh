@@ -156,13 +156,15 @@ if [ -d "$repo_dir/secrets" ]; then
   ln -s "$repo_dir/secrets" "$repo_checkout/secrets"
 fi
 
-compose down --remove-orphans || fail "docker compose down failed"
+compose pull --ignore-buildable || fail "docker compose pull failed"
 
 if [ "$rebuild_no_cache" = "true" ]; then
   compose build --no-cache || fail "docker compose build failed"
 else
   compose build || fail "docker compose build failed"
 fi
+
+compose down --remove-orphans || fail "docker compose down failed"
 
 compose up -d --remove-orphans || fail "docker compose up failed"
 
@@ -174,11 +176,11 @@ if [ -n "$edge_services" ]; then
       *[!A-Za-z0-9_.-]*|'') fail "invalid edge service '$edge_service'" ;;
     esac
 
-    container_ids="$(compose ps -q "$edge_service")"
+    container_ids="$(compose ps -q "$edge_service" 2>/dev/null)" || fail "edge service '$edge_service' is not defined"
     [ -n "$container_ids" ] || fail "edge service '$edge_service' has no running container"
 
     for container_id in $container_ids; do
-      if docker inspect --format '{{ json .NetworkSettings.Networks }}' "$container_id" | grep -q "\"$edge_network\""; then
+      if docker inspect --format '{{ json .NetworkSettings.Networks }}' "$container_id" | grep -Fq "\"$edge_network\""; then
         continue
       fi
 

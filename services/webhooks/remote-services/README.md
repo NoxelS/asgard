@@ -23,4 +23,4 @@ rebuild_no_cache: true
 
 `repository` is the `owner/name` value accepted by the webhook payload. Any valid Git ref from a configured repository may be deployed.
 
-`edge_services` is a comma-separated list of Compose service names to connect to `edge_network` after deployment. Leave it empty to keep the stack private. `rebuild_no_cache` defaults to `true`, which runs `docker compose down`, `docker compose build --no-cache`, and `docker compose up -d --remove-orphans` for each webhook deploy.
+`edge_services` is a comma-separated list of Compose service names to connect to `edge_network` after deployment. Leave it empty to keep the stack private. `rebuild_no_cache` defaults to `true`; each webhook deploy pulls image-based services with `--ignore-buildable`, builds with `--no-cache`, then runs `docker compose down --remove-orphans` and `docker compose up -d --remove-orphans`.
