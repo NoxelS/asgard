@@ -107,7 +107,7 @@ services/webhooks/remote-services/<name>/
     ├── credentials.yaml   # Encrypted with SOPS
     └── api-keys.yaml      # Encrypted with SOPS
 ```
-`repo.yaml` must include `repository: owner/name`, `repo_url`, and may include `compose_path`.
+`repo.yaml` must include `repository: owner/name`, `repo_url`, and may include `compose_path`, `edge_network`, `edge_services`, and `rebuild_no_cache`. `edge_services` is a comma-separated list of Compose services to attach to the edge network after deployment.
 
 **Gitignore rules**:
 - `.env` — Never commit plaintext environment

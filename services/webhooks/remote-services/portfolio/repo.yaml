@@ -1,3 +1,6 @@
 repository: NoxelS/portfolio
 repo_url: https://github.com/NoxelS/portfolio
 compose_path: compose.yaml
+edge_network: edge
+edge_services: frontend,backend
+rebuild_no_cache: true

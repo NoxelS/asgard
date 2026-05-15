@@ -39,6 +39,14 @@ normalize_repository() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
 }
 
+compose() {
+  docker compose \
+    --project-directory "$repo_checkout" \
+    --env-file "$repo_dir/.env" \
+    -f "$compose_file" \
+    "$@"
+}
+
 case "$repository" in
   ''|/*|*/*/*|*[!A-Za-z0-9._/-]*) fail "invalid repository; expected owner/name" ;;
 esac
@@ -71,9 +79,14 @@ done
 repo_dir="$remote_service_root/$remote_service"
 repo_url="$(read_yaml_value repo_url "$repo_config")"
 compose_path="$(read_yaml_value compose_path "$repo_config")"
+edge_network="$(read_yaml_value edge_network "$repo_config")"
+edge_services="$(read_yaml_value edge_services "$repo_config")"
+rebuild_no_cache="$(read_yaml_value rebuild_no_cache "$repo_config")"
 
 [ -n "$repo_url" ] || fail "repo_url missing in '$repo_config'"
 [ -n "$compose_path" ] || compose_path="compose.yaml"
+[ -n "$edge_network" ] || edge_network="edge"
+[ -n "$rebuild_no_cache" ] || rebuild_no_cache="true"
 
 case "$repo_url" in
   https://github.com/*/*|git@github.com:*/*|ssh://git@github.com/*/*) : ;;
@@ -83,6 +96,19 @@ esac
 case "$repo_url" in
   "https://github.com/$configured_repository"|"https://github.com/$configured_repository.git"|"git@github.com:$configured_repository"|"git@github.com:$configured_repository.git"|"ssh://git@github.com/$configured_repository"|"ssh://git@github.com/$configured_repository.git") : ;;
   *) fail "repo_url does not match configured repository '$configured_repository'" ;;
+esac
+
+case "$edge_network" in
+  *[!A-Za-z0-9_.-]*|'') fail "invalid edge_network" ;;
+esac
+
+case "$edge_services" in
+  *[!A-Za-z0-9_.,[:space:]-]*) fail "invalid edge_services" ;;
+esac
+
+case "$rebuild_no_cache" in
+  true|false) : ;;
+  *) fail "rebuild_no_cache must be true or false" ;;
 esac
 
 repo_checkout="$repo_root/$remote_service"
@@ -130,16 +156,35 @@ if [ -d "$repo_dir/secrets" ]; then
   ln -s "$repo_dir/secrets" "$repo_checkout/secrets"
 fi
 
-docker compose \
-  --project-directory "$repo_checkout" \
-  --env-file "$repo_dir/.env" \
-  -f "$compose_file" \
-  pull || fail "docker compose pull failed"
+compose down --remove-orphans || fail "docker compose down failed"
 
-docker compose \
-  --project-directory "$repo_checkout" \
-  --env-file "$repo_dir/.env" \
-  -f "$compose_file" \
-  up -d --remove-orphans || fail "docker compose up failed"
+if [ "$rebuild_no_cache" = "true" ]; then
+  compose build --no-cache || fail "docker compose build failed"
+else
+  compose build || fail "docker compose build failed"
+fi
+
+compose up -d --remove-orphans || fail "docker compose up failed"
+
+if [ -n "$edge_services" ]; then
+  docker network inspect "$edge_network" >/dev/null 2>&1 || fail "edge network '$edge_network' not found"
+
+  for edge_service in $(printf '%s' "$edge_services" | tr ',' ' '); do
+    case "$edge_service" in
+      *[!A-Za-z0-9_.-]*|'') fail "invalid edge service '$edge_service'" ;;
+    esac
+
+    container_ids="$(compose ps -q "$edge_service")"
+    [ -n "$container_ids" ] || fail "edge service '$edge_service' has no running container"
+
+    for container_id in $container_ids; do
+      if docker inspect --format '{{ json .NetworkSettings.Networks }}' "$container_id" | grep -q "\"$edge_network\""; then
+        continue
+      fi
+
+      docker network connect "$edge_network" "$container_id" || fail "failed to connect '$edge_service' to '$edge_network'"
+    done
+  done
+fi
 
 notify "Updated remote service '$remote_service' for repository '$repository' at '$ref'."

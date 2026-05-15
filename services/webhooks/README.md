@@ -27,9 +27,14 @@ Each repository must be defined under `services/webhooks/remote-services/<name>/
 repository: NoxelS/portfolio
 repo_url: https://github.com/NoxelS/portfolio
 compose_path: compose.yaml
+edge_network: edge
+edge_services: frontend,backend
+rebuild_no_cache: true
 ```
 
 The webhook rejects repositories that are not present in these definitions. Any valid Git ref from an allowlisted repository may be requested.
+
+Use `edge_services` to expose specific Compose services on the external Docker network used by Caddy. Do not list internal-only services such as databases or Redis.
 
 For local testing, use:
 
