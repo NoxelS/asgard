@@ -28,6 +28,8 @@ services:
       - q8_0
       - --cache-type-v
       - q8_0
+      - --slot-save-path
+      - /cache/slots
       - --metrics
     env_file:
       - ./.env
@@ -44,6 +46,7 @@ services:
     restart: unless-stopped
     volumes:
       - ${MODEL_DIR}:/models:ro
+      - llama-cache:/cache
     networks:
       - apps
 
@@ -142,6 +145,9 @@ services:
       - ${MODEL_DIR}:/models:ro
     networks:
       - apps
+
+volumes:
+  llama-cache:
 
 networks:
   apps:
