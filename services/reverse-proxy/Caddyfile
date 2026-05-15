@@ -28,12 +28,6 @@ api.noel.fyi {
 	reverse_proxy portfolio-backend-1:8000
 }
 
-redis.noel.fyi {
-	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
-	import security_headers
-	reverse_proxy portfolio-redis-1:8001
-}
-
 ntfy.noel.fyi {
 	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
 	import security_headers
