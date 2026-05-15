@@ -52,6 +52,7 @@ llm.noel.fyi {
 
 	@authorized header Authorization "Bearer {$LLM_BEARER_TOKEN}"
 	handle @authorized {
+		header Cache-Control "public, s-maxage=300"
 		reverse_proxy llama-llm:8080
 	}
 
