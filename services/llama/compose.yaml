@@ -29,7 +29,7 @@ services:
       - --cache-type-v
       - q8_0
       - --slot-save-path
-      - /cache/slots
+      - /cache
       - --metrics
     env_file:
       - ./.env
