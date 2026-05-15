@@ -3,12 +3,8 @@ set -eu
 
 repository="${HOOK_REPOSITORY:-}"
 ref="${HOOK_REF:-}"
-image="${HOOK_IMAGE:-}"
-tag="${HOOK_TAG:-}"
-service_root="${WEBHOOK_SERVICE_ROOT:-/opt/services}"
-service_map="${WEBHOOK_SERVICE_MAP:-/config/service-map.tsv}"
 remote_service_root="${WEBHOOK_REMOTE_SERVICE_ROOT:-/opt/remote-services}"
-remote_repo_root="${WEBHOOK_REMOTE_REPO_ROOT:-/opt/remote-repos}"
+repo_root="${WEBHOOK_REPO_ROOT:-/opt/repos}"
 ntfy_url="${WEBHOOK_NTFY_URL:-}"
 
 notify() {
@@ -26,92 +22,124 @@ fail() {
   exit 1
 }
 
+read_yaml_value() {
+  key="$1"
+  file="$2"
+  awk -F':[[:space:]]*' -v key="$key" '
+    $1 == key {
+      sub(/^[^:]+:[[:space:]]*/, "")
+      gsub(/^\"|\"$/, "")
+      print
+      exit
+    }
+  ' "$file"
+}
+
+normalize_repository() {
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
 case "$repository" in
-  ''|*[!A-Za-z0-9._-]*) fail "invalid repository" ;;
+  ''|/*|*/*/*|*[!A-Za-z0-9._/-]*) fail "invalid repository; expected owner/name" ;;
 esac
 
-  case "$repository" in
-    *.*|*/*) fail "invalid repository owner" ;;
-  esac
-
-[ "$ref" = "refs/heads/main" ] || fail "unsupported ref '$ref'"
-[ -f "$service_map" ] || fail "service map not found"
-
-mapping="$(awk -v repo="$repository" '
-  $0 !~ /^#/ && NF >= 3 && $1 == repo { print $2 "\t" $3 "\t" $4; found=1; exit }
-  END { if (!found) exit 1 }
-' "$service_map")" || fail "repository is not allowlisted"
-
-compose_project="$(printf '%s' "$mapping" | cut -f1)"
-compose_service="$(printf '%s' "$mapping" | cut -f2)"
-remote_service="$(printf '%s' "$mapping" | cut -f3)"
-
-case "$compose_project:$compose_service" in
-  *[!A-Za-z0-9._:-]*) fail "invalid service mapping" ;;
+case "$ref" in
+  ''|-*|*[!A-Za-z0-9._/@:-]*|*..*|*@\{*) fail "invalid ref" ;;
 esac
 
-if [ -n "$remote_service" ]; then
-  case "$remote_service" in
-    *[!A-Za-z0-9._-]*) fail "invalid remote service mapping" ;;
-  esac
+[ -d "$remote_service_root" ] || fail "remote service root not found"
 
-  repo_dir="$remote_service_root/$remote_service"
-  repo_config="$repo_dir/repo.yaml"
+repository_match="$(normalize_repository "$repository")"
+remote_service=""
+repo_config=""
+configured_repository=""
 
-  [ -f "$repo_config" ] || fail "remote service config not found for '$remote_service'"
+for candidate in "$remote_service_root"/*/repo.yaml; do
+  [ -f "$candidate" ] || continue
+  configured_repository="$(read_yaml_value repository "$candidate")"
+  [ -n "$configured_repository" ] || fail "repository missing in '$candidate'"
 
-  repo_url="$(awk -F': ' '$1 == "repo_url" { sub(/^[^:]+: /, ""); print; exit }' "$repo_config")"
-  branch="$(awk -F': ' '$1 == "branch" { sub(/^[^:]+: /, ""); print; exit }' "$repo_config")"
-  compose_path="$(awk -F': ' '$1 == "compose_path" { sub(/^[^:]+: /, ""); print; exit }' "$repo_config")"
-
-  [ -n "$repo_url" ] || fail "repo_url missing in '$repo_config'"
-  [ -n "$branch" ] || branch="main"
-  [ -n "$compose_path" ] || compose_path="compose.yaml"
-
-  case "$repo_url" in
-    https://github.com/NoxelS/*) : ;;
-    git@github.com:NoxelS/*) : ;;
-    ssh://git@github.com/NoxelS/*) : ;;
-    *ghcr.io/noxels/*) fail "repo_url must be a git URL for NoxelS, not an image" ;;
-    *github.com/*) fail "repo_url must be under github.com/NoxelS" ;;
-    *) fail "repo_url must be a github.com/NoxelS repository" ;;
-  esac
-
-  repo_checkout="$remote_repo_root/$remote_service"
-  compose_file="$repo_checkout/$compose_path"
-
-  mkdir -p "$remote_repo_root" "$remote_service_root"
-
-  if [ ! -d "$repo_checkout/.git" ]; then
-    git clone --branch "$branch" --depth 1 "$repo_url" "$repo_checkout" || fail "git clone failed"
-  else
-    git -C "$repo_checkout" fetch origin "$branch" --depth 1 || fail "git fetch failed"
-    git -C "$repo_checkout" checkout "$branch" || fail "git checkout failed"
-    git -C "$repo_checkout" reset --hard "origin/$branch" || fail "git reset failed"
+  if [ "$(normalize_repository "$configured_repository")" = "$repository_match" ]; then
+    remote_service="$(basename "$(dirname "$candidate")")"
+    repo_config="$candidate"
+    break
   fi
+done
 
-  [ -f "$compose_file" ] || fail "compose file not found at '$compose_path'"
-  [ -f "$repo_dir/.env" ] || fail "missing .env for remote service '$remote_service'"
+[ -n "$remote_service" ] || fail "repository is not allowlisted"
 
-  ln -sf "$repo_dir/.env" "$repo_checkout/.env"
-  if [ -d "$repo_dir/secrets" ]; then
-    ln -sf "$repo_dir/secrets" "$repo_checkout/secrets"
-  fi
+repo_dir="$remote_service_root/$remote_service"
+repo_url="$(read_yaml_value repo_url "$repo_config")"
+compose_path="$(read_yaml_value compose_path "$repo_config")"
 
-  notify "Accepted deploy request for '$repository' from '$ref'${image:+ image '$image'}${tag:+ tag '$tag'}; updating remote '$remote_service'."
+[ -n "$repo_url" ] || fail "repo_url missing in '$repo_config'"
+[ -n "$compose_path" ] || compose_path="compose.yaml"
 
-  docker compose --project-directory "$repo_checkout" --env-file "$repo_dir/.env" -f "$compose_file" pull
-  docker compose --project-directory "$repo_checkout" --env-file "$repo_dir/.env" -f "$compose_file" up -d
+case "$repo_url" in
+  https://github.com/*/*|git@github.com:*/*|ssh://git@github.com/*/*) : ;;
+  *) fail "repo_url must be a GitHub repository URL" ;;
+esac
 
-  notify "Updated remote service '$remote_service' for repository '$repository'."
+case "$repo_url" in
+  "https://github.com/$configured_repository"|"https://github.com/$configured_repository.git"|"git@github.com:$configured_repository"|"git@github.com:$configured_repository.git"|"ssh://git@github.com/$configured_repository"|"ssh://git@github.com/$configured_repository.git") : ;;
+  *) fail "repo_url does not match configured repository '$configured_repository'" ;;
+esac
+
+repo_checkout="$repo_root/$remote_service"
+compose_file="$repo_checkout/$compose_path"
+
+mkdir -p "$repo_root"
+
+notify "Deploy request accepted for '$repository' at '$ref'; updating '$remote_service'."
+
+if [ ! -d "$repo_checkout/.git" ]; then
+  git clone --no-checkout "$repo_url" "$repo_checkout" || fail "git clone failed"
 else
-  project_dir="$service_root/$compose_project"
-  [ -f "$project_dir/compose.yaml" ] || fail "compose file not found for '$compose_project'"
-
-  notify "Accepted deploy request for '$repository' from '$ref'${image:+ image '$image'}${tag:+ tag '$tag'}; updating '$compose_project/$compose_service'."
-
-  docker compose --project-directory "$project_dir" pull "$compose_service"
-  docker compose --project-directory "$project_dir" up -d --no-deps "$compose_service"
-
-  notify "Updated '$compose_project/$compose_service' for repository '$repository'."
+  current_origin="$(git -C "$repo_checkout" remote get-url origin 2>/dev/null || true)"
+  [ "$current_origin" = "$repo_url" ] || fail "existing checkout origin does not match configured repo_url"
 fi
+
+git -C "$repo_checkout" fetch --tags --prune origin \
+  '+refs/heads/*:refs/remotes/origin/*' \
+  '+refs/tags/*:refs/tags/*' || fail "git fetch failed"
+
+case "$ref" in
+  refs/heads/*)
+    branch="${ref#refs/heads/}"
+    git -C "$repo_checkout" checkout -B "$branch" "origin/$branch" || fail "git checkout failed"
+    ;;
+  refs/tags/*)
+    tag="${ref#refs/tags/}"
+    git -C "$repo_checkout" checkout --detach "refs/tags/$tag" || fail "git checkout failed"
+    ;;
+  ????????????????????????????????????????)
+    git -C "$repo_checkout" checkout --detach "$ref" || fail "git checkout failed"
+    ;;
+  *)
+    git -C "$repo_checkout" fetch origin "$ref" || fail "git fetch ref failed"
+    git -C "$repo_checkout" checkout --detach FETCH_HEAD || fail "git checkout failed"
+    ;;
+esac
+
+[ -f "$compose_file" ] || fail "compose file not found at '$compose_path'"
+[ -f "$repo_dir/.env" ] || fail "missing .env for remote service '$remote_service'"
+
+ln -sf "$repo_dir/.env" "$repo_checkout/.env"
+if [ -d "$repo_dir/secrets" ]; then
+  rm -rf "$repo_checkout/secrets"
+  ln -s "$repo_dir/secrets" "$repo_checkout/secrets"
+fi
+
+docker compose \
+  --project-directory "$repo_checkout" \
+  --env-file "$repo_dir/.env" \
+  -f "$compose_file" \
+  pull || fail "docker compose pull failed"
+
+docker compose \
+  --project-directory "$repo_checkout" \
+  --env-file "$repo_dir/.env" \
+  -f "$compose_file" \
+  up -d --remove-orphans || fail "docker compose up failed"
+
+notify "Updated remote service '$remote_service' for repository '$repository' at '$ref'."

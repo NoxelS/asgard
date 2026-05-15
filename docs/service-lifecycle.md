@@ -86,10 +86,10 @@ Use the `add-service` skill or follow this manual process:
 
 ### Remote Services
 
-Remote services are deployed from external repositories and live under `remote-services/<name>/`:
+Webhook-managed repository services are deployed from external repositories and live under `services/webhooks/remote-services/<name>/`:
 
 ```
-remote-services/<name>/
+services/webhooks/remote-services/<name>/
 ├── repo.yaml
 ├── .env.example
 ├── .env

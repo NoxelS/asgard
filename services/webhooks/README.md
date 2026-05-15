@@ -1,6 +1,6 @@
 # Webhooks
 
-`webhooks` receives signed deployment callbacks at `https://hooks.noel.fyi/hooks/deploy` and recreates allowlisted Docker Compose services after new images are published. It can deploy either local services in this repo or remote services checked out from allowlisted repositories.
+`webhooks` receives signed deployment callbacks at `https://hooks.noel.fyi/hooks/deploy`, checks out allowlisted Git repositories under `/opt/repos`, and deploys their Docker Compose stacks. Repository allowlisting, environment files, and secrets live under `services/webhooks/remote-services/`.
 
 ## Request Contract
 
@@ -8,10 +8,8 @@ Send a `POST` request with JSON metadata only:
 
 ```json
 {
-  "repository": "ntfy",
-  "ref": "refs/heads/main",
-  "image": "binwiederhier/ntfy",
-  "tag": "v2.22.0"
+  "repository": "NoxelS/portfolio",
+  "ref": "refs/heads/main"
 }
 ```
 
@@ -21,13 +19,27 @@ The request must include `X-Hub-Signature-256` using the SOPS-encrypted secret i
 sha256=<hex hmac of raw request body>
 ```
 
-## Service Allowlist
+## Repository Allowlist
 
-`service-map.tsv` maps incoming repository names to Compose projects and services. When a fourth column is set, the webhook treats it as a `remote-services/<name>` entry and deploys from the repo checkout defined there. The script only updates entries in this file and rejects arbitrary repository names or paths.
+Each repository must be defined under `services/webhooks/remote-services/<name>/repo.yaml`:
+
+```yaml
+repository: NoxelS/portfolio
+repo_url: https://github.com/NoxelS/portfolio
+compose_path: compose.yaml
+```
+
+The webhook rejects repositories that are not present in these definitions. Any valid Git ref from an allowlisted repository may be requested.
+
+For local testing, use:
+
+```bash
+make webhook NoxelS/portfolio REF=refs/heads/main
+```
 
 ## Security Notes
 
-This service mounts `/var/run/docker.sock`, which is privileged access to the Docker host. Keep the hook secret private, use HMAC signatures, keep `service-map.tsv` narrow, and restrict remote service repos to `github.com/NoxelS/*`.
+This service mounts `/var/run/docker.sock`, which is privileged access to the Docker host. Keep the hook secret private, use HMAC signatures, and keep `services/webhooks/remote-services/` narrow.
 
 ## Monitoring
 

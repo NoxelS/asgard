@@ -23,11 +23,9 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /opt/services:/opt/services
-      - /opt/remote-services:/opt/remote-services
-      - /opt/remote-repos:/opt/remote-repos
+      - /opt/repos:/opt/repos
+      - ./remote-services:/opt/remote-services:ro
       - ./hooks.yaml.tpl:/config/hooks.yaml.tpl:ro
-      - ./service-map.tsv:/config/service-map.tsv:ro
       - ./update-service.sh:/config/update-service.sh:ro
       - ./secrets/webhook_secret:/run/secrets/webhook_secret:ro
     networks:

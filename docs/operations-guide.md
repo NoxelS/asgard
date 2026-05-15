@@ -13,10 +13,10 @@ make ansible-inventory
 # Deploy a service
 make ansible-deploy-service SERVICE=<name>
 
-# Deploy a remote service
-make ansible-deploy-services remote_service_selector=<name>
+# Trigger a webhook-managed repository deploy
+make webhook NoxelS/portfolio REF=refs/heads/main
 
-# Deploy all services (local + remote)
+# Deploy all Ansible-managed services
 make ansible-deploy-services
 
 # Validate Ansible before deployment
@@ -398,11 +398,11 @@ cat services/<name>/.env
 # Verify secrets are encrypted
 file services/<name>/secrets/*
 
-# Remote services: inspect repo mapping
-cat remote-services/<name>/repo.yaml
+# Webhook repositories: inspect repo mapping
+cat services/webhooks/remote-services/<name>/repo.yaml
 
-# Remote services: check environment variables
-cat remote-services/<name>/.env
+# Webhook repositories: check environment variables
+cat services/webhooks/remote-services/<name>/.env
 
 # Check DNS resolution
 ssh yggdrasil nslookup <registry-domain>
@@ -508,7 +508,7 @@ ssh yggdrasil docker logs <name>
 - **Skills**: Use `add-service`, `deploy-service`, `bootstrap-host`, `manage-secrets`
 - **Infrastructure**: `bootstrap/ansible/` for Ansible configuration
 - **Services**: `services/` for local service configurations
-- **Remote Services**: `remote-services/` for external repo stacks and secrets
+- **Webhook Repositories**: `services/webhooks/remote-services/` for external repo stacks and secrets
 
 ---
 

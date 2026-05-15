@@ -19,7 +19,19 @@ http:// {
 noel.fyi {
 	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
 	import security_headers
-	reverse_proxy portfolio:4321
+	reverse_proxy portfolio-frontend-1:4321
+}
+
+api.noel.fyi {
+	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+	import security_headers
+	reverse_proxy portfolio-backend-1:8000
+}
+
+redis.noel.fyi {
+	tls /etc/caddy/certs/origin.crt /etc/caddy/certs/origin.key
+	import security_headers
+	reverse_proxy portfolio-redis-1:8001
 }
 
 ntfy.noel.fyi {

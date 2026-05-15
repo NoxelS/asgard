@@ -1,11 +1,11 @@
 # Trigger Yggdrasil Deploy Webhook
 
-Use this guide from another repository when a successful main-branch build should tell Yggdrasil to pull and recreate that project's Docker Compose service. Deployments can target services defined in this repo or remote services checked out from allowlisted repositories.
+Use this guide from another repository when a build should tell Yggdrasil to check out that repository and deploy its Docker Compose stack. Deployments only target repositories allowlisted under `services/webhooks/remote-services/`.
 
 ## Required Setup
 
-1. Add the repository to `services/webhooks/service-map.tsv` in this infrastructure repo.
-2. For remote services, add `remote-services/<name>/repo.yaml` and secrets/env to this repo.
+1. Add `services/webhooks/remote-services/<name>/repo.yaml` in this infrastructure repo.
+2. Add `.env` and optional SOPS-encrypted `secrets/` beside that `repo.yaml`.
 3. Deploy the `webhooks` service after changing the allowlist.
 4. Store the webhook HMAC secret in the source repository's GitHub Actions secrets.
 
@@ -23,7 +23,7 @@ Yes, the secret should be stored in GitHub Actions secrets. Do not commit it to 
 POST https://hooks.noel.fyi/hooks/deploy
 ```
 
-The webhook only accepts signed `POST` requests for `refs/heads/main`.
+The webhook only accepts signed `POST` requests. Any valid Git ref from an allowlisted repository may be requested.
 
 ## Payload
 
@@ -31,10 +31,8 @@ Send metadata only. Do not send code or shell commands.
 
 ```json
 {
-  "repository": "portfolio",
-  "ref": "refs/heads/main",
-  "image": "ghcr.io/noxels/portfolio",
-  "tag": "latest"
+  "repository": "NoxelS/portfolio",
+  "ref": "refs/heads/main"
 }
 ```
 
@@ -42,10 +40,8 @@ Fields:
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `repository` | Yes | Allowlisted repository key from `services/webhooks/service-map.tsv` |
-| `ref` | Yes | Must be `refs/heads/main` |
-| `image` | No | Image name for logs and ntfy notifications |
-| `tag` | No | Image tag for logs and ntfy notifications |
+| `repository` | Yes | Allowlisted `owner/name` repository from `repo.yaml` |
+| `ref` | Yes | Git ref to check out, such as `refs/heads/main`, `refs/tags/v1.0.0`, or a commit SHA |
 
 ## Signature
 
@@ -59,7 +55,7 @@ The webhook rejects requests if the signature does not match `YGGDRASIL_WEBHOOK_
 
 ## GitHub Actions Example
 
-Add this step after the image has been pushed to the registry:
+Add this step after the image has been pushed to the registry or after the repository ref is ready to deploy:
 
 ```yaml
 - name: Trigger Yggdrasil deploy
@@ -67,18 +63,14 @@ Add this step after the image has been pushed to the registry:
   env:
     WEBHOOK_SECRET: ${{ secrets.YGGDRASIL_WEBHOOK_SECRET }}
     WEBHOOK_URL: https://hooks.noel.fyi/hooks/deploy
-    REPOSITORY: portfolio
-    IMAGE: ghcr.io/noxels/portfolio
-    TAG: latest
+    REPOSITORY: ${{ github.repository }}
   run: |
     set -euo pipefail
 
     payload=$(jq -cn \
       --arg repository "$REPOSITORY" \
       --arg ref "$GITHUB_REF" \
-      --arg image "$IMAGE" \
-      --arg tag "$TAG" \
-      '{repository: $repository, ref: $ref, image: $image, tag: $tag}')
+      '{repository: $repository, ref: $ref}')
 
     signature="sha256=$(printf '%s' "$payload" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary | xxd -p -c 256)"
 
@@ -95,11 +87,10 @@ Add this step after the image has been pushed to the registry:
 When adding this to a side-project repository:
 
 1. Confirm the Docker image is pushed before the webhook step runs.
-2. Set `REPOSITORY` to the allowlisted key in `services/webhooks/service-map.tsv`.
-3. For remote services, ensure `remote-services/<name>/repo.yaml` points at `github.com/NoxelS/<repo>`.
-4. Set `IMAGE` and `TAG` to the image that was just pushed.
-5. Use `secrets.YGGDRASIL_WEBHOOK_SECRET` for signing.
-6. Never include the secret in workflow logs.
+2. Set `REPOSITORY` to the allowlisted `owner/name` value in `services/webhooks/remote-services/<name>/repo.yaml`.
+3. Ensure `.env` and optional encrypted secrets exist in `services/webhooks/remote-services/<name>/`.
+4. Use `secrets.YGGDRASIL_WEBHOOK_SECRET` for signing.
+5. Never include the secret in workflow logs.
 
 ## Expected Result
 

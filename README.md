@@ -23,7 +23,7 @@ Single-host operations repo for `yggdrasil` and the Docker services it runs.
 - `docs/`: architecture, onboarding, runbooks
 - `bootstrap/ansible/`: host bootstrap and service deployment
 - `services/`: side projects, Compose files, and service-local secrets
-- `remote-services/`: repo-managed stacks with env/secrets stored here
+- `services/webhooks/remote-services/`: webhook-managed repository stacks with env/secrets stored here
 
 ## Status
 
@@ -42,6 +42,7 @@ make ansible-deploy-service SERVICE=ntfy
 make ansible-deploy-service SERVICE=diun
 make ansible-deploy-services
 make ansible-deploy-service SERVICE=reverse-proxy
+make webhook NoxelS/portfolio REF=refs/heads/main
 ```
 
 ## Service Layout

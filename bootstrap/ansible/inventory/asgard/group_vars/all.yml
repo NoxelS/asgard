@@ -22,5 +22,3 @@ docker_host_networks:
   - edge
   - apps
 docker_service_root: /opt/services
-remote_service_root: /opt/remote-services
-remote_repo_root: /opt/remote-repos

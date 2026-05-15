@@ -45,6 +45,35 @@
       Service {{ docker_service_name }} defines .env.example but is missing .env.
       Create services/{{ docker_service_name }}/.env before deployment.
 
+- name: Find webhook remote service environment templates
+  ansible.builtin.set_fact:
+    docker_service_nested_env_example_files: >-
+      {{ lookup("ansible.builtin.fileglob", docker_service_local_path ~ "/remote-services/*/.env.example", wantlist=True) }}
+  when: docker_service_name == "webhooks"
+
+- name: Check webhook remote service environment files
+  ansible.builtin.stat:
+    path: "{{ item | dirname }}/.env"
+  loop: "{{ docker_service_nested_env_example_files | default([]) }}"
+  delegate_to: localhost
+  become: false
+  register: docker_service_nested_env_files
+  when: docker_service_name == "webhooks"
+
+- name: Fail when webhook remote service .env.example exists without .env
+  ansible.builtin.assert:
+    that:
+      - >-
+        (docker_service_nested_env_files.results
+        | default([])
+        | selectattr("stat.exists", "equalto", false)
+        | list
+        | length) == 0
+    fail_msg: >-
+      A webhook remote service defines .env.example but is missing .env.
+      Create services/webhooks/remote-services/<name>/.env before deployment.
+  when: docker_service_name == "webhooks"
+
 - name: Enforce reverse-proxy-only public ingress
   ansible.builtin.assert:
     that:
@@ -60,6 +89,8 @@
     docker_service_remote_path: "{{ docker_service_root }}/{{ docker_service_name }}"
     docker_service_secret_files: >-
       {{ lookup("ansible.builtin.fileglob", docker_service_local_path ~ "/secrets/*", wantlist=True) }}
+    docker_service_nested_secret_files: >-
+      {{ lookup("ansible.builtin.fileglob", docker_service_local_path ~ "/remote-services/*/secrets/*", wantlist=True) }}
 
 - name: Ensure the service root exists on the host
   ansible.builtin.file:
@@ -89,6 +120,21 @@
     mode: "0700"
   when: docker_service_secret_files | length > 0
 
+- name: Ensure webhook remote service secret directories exist
+  ansible.builtin.file:
+    path: >-
+      {{
+        item
+        | dirname
+        | regex_replace('^' ~ (docker_service_local_path | regex_escape), docker_service_remote_path)
+      }}
+    state: directory
+    mode: "0700"
+  loop: "{{ docker_service_nested_secret_files }}"
+  when:
+    - docker_service_name == "webhooks"
+    - docker_service_nested_secret_files | length > 0
+
 - name: Deploy decrypted service secrets
   ansible.builtin.copy:
     dest: "{{ docker_service_remote_path }}/secrets/{{ item | basename }}"
@@ -99,12 +145,29 @@
   no_log: true
   register: docker_service_secret_copy_result
 
+- name: Deploy decrypted webhook remote service secrets
+  ansible.builtin.copy:
+    dest: >-
+      {{
+        item
+        | regex_replace('^' ~ (docker_service_local_path | regex_escape), docker_service_remote_path)
+      }}
+    mode: "0600"
+    content: "{{ lookup('ansible.builtin.pipe', 'sops --decrypt ' ~ (item | quote)) }}"
+  loop: "{{ docker_service_nested_secret_files }}"
+  when:
+    - docker_service_name == "webhooks"
+    - docker_service_nested_secret_files | length > 0
+  no_log: true
+  register: docker_service_nested_secret_copy_result
+
 - name: Track whether service files changed on the host
   ansible.builtin.set_fact:
     docker_service_files_changed: >-
       {{
         docker_service_sync_result is changed
         or (docker_service_secret_copy_result is defined and docker_service_secret_copy_result is changed)
+        or (docker_service_nested_secret_copy_result is defined and docker_service_nested_secret_copy_result is changed)
       }}
 
 # The final converge step makes Docker start or update the compose project to

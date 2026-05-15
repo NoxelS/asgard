@@ -151,11 +151,11 @@ myapp.example.com → Caddy → 10.0.9.3:8080 (app container)
 - Environment configuration (`.env` files)
 - Persistent volumes (app-managed)
 
-**Configuration**: `services/*` plus `remote-services/*` for repo-managed stacks
+**Configuration**: `services/*` plus `services/webhooks/remote-services/*` for webhook-managed repository stacks
 
-**Deployment**: `make ansible-deploy-service SERVICE=<name>` or `make ansible-deploy-services`
+**Deployment**: `make ansible-deploy-service SERVICE=<name>`, `make ansible-deploy-services`, or signed repository webhooks
 
-**Service discovery**: Automatic from `services/*/compose.yaml` and `remote-services/*/repo.yaml`
+**Service discovery**: Automatic from `services/*/compose.yaml`; webhook repository allowlisting comes from `services/webhooks/remote-services/*/repo.yaml`
 
 **Update workflow**: Diun → Ntfy → Manual decision → Image tag change → Redeploy
 

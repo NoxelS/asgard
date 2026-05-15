@@ -4,7 +4,6 @@
   become: true
   vars:
     services_root: "{{ playbook_dir }}/../../../services"
-    remote_services_root: "{{ playbook_dir }}/../../../remote-services"
   tasks:
     # Auto-discover deployable services from the repo so the default run can
     # converge every compose-based service without listing them manually.
@@ -18,36 +17,16 @@
       become: false
       register: discovered_service_compose_files
 
-    - name: Find remote service definitions
-      ansible.builtin.find:
-        paths: "{{ remote_services_root }}"
-        patterns: repo.yaml
-        file_type: file
-        recurse: false
-      delegate_to: localhost
-      become: false
-      register: discovered_remote_service_files
-
     - name: Discover service names
       ansible.builtin.set_fact:
         discovered_service_names: >-
           {{
             discovered_service_compose_files.files
             | map(attribute="path")
+            | reject("search", "/webhooks/remote-services/")
             | map("dirname")
             | map("basename")
             | reject("equalto", "service-template")
-            | list
-          }}
-
-    - name: Discover remote service names
-      ansible.builtin.set_fact:
-        discovered_remote_service_names: >-
-          {{
-            discovered_remote_service_files.files
-            | map(attribute="path")
-            | map("dirname")
-            | map("basename")
             | list
           }}
 
@@ -65,25 +44,12 @@
               | list
           }}
 
-    - name: Select remote service names
-      ansible.builtin.set_fact:
-        remote_service_names: >-
-          {{
-            discovered_remote_service_names
-            if (remote_service_selector | default("") | trim | length == 0)
-            else remote_service_selector.split(",")
-              | map("trim")
-              | reject("equalto", "")
-              | list
-          }}
-
     - name: Fail when no services are selected
       ansible.builtin.assert:
         that:
-          - docker_service_names | length > 0 or remote_service_names | length > 0
+          - docker_service_names | length > 0
         fail_msg: >-
-          No services were found to deploy. Add services/*/compose.yaml,
-          remote-services/*/repo.yaml, or pass docker_service_selector/remote_service_selector.
+          No services were found to deploy. Add services/*/compose.yaml or pass docker_service_selector.
 
     - name: Deploy reverse-proxy before dependent services
       ansible.builtin.set_fact:
@@ -102,11 +68,3 @@
         docker_service_name: "{{ item }}"
         docker_service_local_path: "{{ services_root }}/{{ item }}"
       loop: "{{ docker_service_names }}"
-
-    - name: Deploy selected remote services
-      ansible.builtin.include_role:
-        name: remote_service
-      vars:
-        remote_service_name: "{{ item }}"
-        remote_service_local_path: "{{ remote_services_root }}/{{ item }}"
-      loop: "{{ remote_service_names }}"
